@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <string>
 #include <vector>
+#include <map>
 
 #include "linux_parser.h"
 
@@ -35,13 +36,13 @@ string LinuxParser::OperatingSystem() {
 
 // DONE: An example of how to read data from the filesystem
 string LinuxParser::Kernel() {
-  string os, kernel;
+  string os, version, kernel;
   string line;
   std::ifstream stream(kProcDirectory + kVersionFilename);
   if (stream.is_open()) {
     std::getline(stream, line);
     std::istringstream linestream(line);
-    linestream >> os >> kernel;
+    linestream >> os >> version >> kernel;
   }
   return kernel;
 }
@@ -67,7 +68,25 @@ vector<int> LinuxParser::Pids() {
 }
 
 // TODO: Read and return the system memory utilization
-float LinuxParser::MemoryUtilization() { return 0.0; }
+float LinuxParser::MemoryUtilization() { 
+  string name;  // name of the memeory info
+  float size;     // size of the memory info
+  string unit;  // unit of memory in kB
+  std::map <string, float> memoryUtilMap;
+  string line;
+  std::ifstream inFile(kProcDirectory + kMeminfoFilename); // open /proc/meminfo
+  if (inFile.is_open()) {
+    while(std::getline(inFile, line)) {
+      std::replace(line.begin(), line.end(), ':', ' ');
+      std::istringstream linestream(line);
+      linestream >> name >> size >> unit;
+      memoryUtilMap[name] = size;
+    }
+  }
+  
+  return (memoryUtilMap["MemTotal"] - (memoryUtilMap["MemFree"] + 
+          memoryUtilMap["Buffers"]+memoryUtilMap["Cached"])) / memoryUtilMap["MemTotal"]; 
+}
 
 // TODO: Read and return the system uptime
 long LinuxParser::UpTime() { return 0; }
