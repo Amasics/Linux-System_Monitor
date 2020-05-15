@@ -1,5 +1,6 @@
 #include <dirent.h>
 #include <unistd.h>
+#include <sys/time.h>
 #include <string>
 #include <vector>
 #include <map>
@@ -103,21 +104,47 @@ long LinuxParser::UpTime() {
   return upTime; 
 }
 
-// TODO: Read and return the number of jiffies for the system
-long LinuxParser::Jiffies() { return 0; }
+// Read and return the number of jiffies for the system
+long LinuxParser::Jiffies() { 
+  return LinuxParser::ActiveJiffies() + LinuxParser::IdleJiffies();
+}
 
 // TODO: Read and return the number of active jiffies for a PID
 // REMOVE: [[maybe_unused]] once you define the function
 long LinuxParser::ActiveJiffies(int pid[[maybe_unused]]) { return 0; }
 
-// TODO: Read and return the number of active jiffies for the system
-long LinuxParser::ActiveJiffies() { return 0; }
+// Read and return the number of active jiffies for the system
+long LinuxParser::ActiveJiffies() { 
+  vector<string> utilization = LinuxParser::CpuUtilization();
+  return stol(utilization[kUser_]) + stol(utilization[kNice_]) + stol(utilization[kSystem_]) +
+      stol(utilization[kIRQ_]) + stol(utilization[kSoftIRQ_]) + stol(utilization[kSteal_]) + 
+      stol(utilization[kGuest_]) + stol(utilization[kGuestNice_]); 
+}
 
-// TODO: Read and return the number of idle jiffies for the system
-long LinuxParser::IdleJiffies() { return 0; }
+// Read and return the number of idle jiffies for the system
+long LinuxParser::IdleJiffies() { 
+  vector<string> utilization = LinuxParser::CpuUtilization();
+  return stol(utilization[kIdle_]) + stol(utilization[kIOwait_]);
+}
 
-// TODO: Read and return CPU utilization
-vector<string> LinuxParser::CpuUtilization() { return {}; }
+// Read and return CPU utilization
+vector<string> LinuxParser::CpuUtilization() { 
+  string cpu;
+  string value;
+  vector<string> utilization = {}; 
+  std::ifstream inFile(kProcDirectory + kStatFilename);
+  string line;
+  if (inFile.is_open()) {
+    std::getline(inFile, line);
+    std::istringstream linestream(line);
+    linestream >> cpu;
+    while (linestream >> value) {
+      utilization.emplace_back(value);
+    }
+  }
+
+  return utilization;
+}
 
 // Read and return the total number of processes
 int LinuxParser::TotalProcesses() { 
@@ -138,7 +165,7 @@ int LinuxParser::TotalProcesses() {
   return value;
 }
 
-// TODO: Read and return the number of running processes
+// Read and return the number of running processes
 int LinuxParser::RunningProcesses() { 
   string key;
   int value;
